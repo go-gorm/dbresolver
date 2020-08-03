@@ -1,9 +1,9 @@
 # GORM DBResolver
 
 ```go
-db, err := gorm.Open(mysql.Open("dsn"), gorm.Config{})
+db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 
-dbresolver := dbresolver.Register(dbresolver.Config{
+db.Use(dbresolver.Register(dbresolver.Config{
   Sources:  []gorm.Dialector{}, // or use default
   Replicas: []gorm.Dialector{},
 }).Register(dbresolver.Config{
@@ -12,7 +12,5 @@ dbresolver := dbresolver.Register(dbresolver.Config{
 }, &User{}, &Product{}).Register(dbresolver.Config{
   Source:   gorm.Dialector, // or use default
   Replicas: []gorm.Dialector{},
-}, "users", &Order{})
+}, "users", &Order{}))
 ```
-
-dbresolver

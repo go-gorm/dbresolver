@@ -60,53 +60,53 @@ func TestDBResolver(t *testing.T) {
 		}).Register(dbresolver.Config{
 			Sources:  []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9914)/gorm?charset=utf8&parseTime=True&loc=Local")},
 			Replicas: []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local")},
-		}, "users", &Product{})); err != nil {
+		}, "users", &Product{}).SetMaxOpenConns(5)); err != nil {
 			t.Fatalf("failed to use plugin, got error: %v", err)
 		}
 
-		for j := 0; j < 20; i++ {
+		for j := 0; j < 20; j++ {
 			// test query
 			var order Order
 			DB.First(&order)
 			if order.OrderNo != "9912" && order.OrderNo != "9913" {
-				t.Fatalf("idx: %v: order should comes from read db, but got order %v", i, order.OrderNo)
+				t.Fatalf("idx: %v: order should comes from read db, but got order %v", j, order.OrderNo)
 			}
 
 			DB.Clauses(dbresolver.Write).First(&order)
 			if order.OrderNo != "9911" {
-				t.Fatalf("idx: %v: order should comes from write db, but got order %v", i, order.OrderNo)
+				t.Fatalf("idx: %v: order should comes from write db, but got order %v", j, order.OrderNo)
 			}
 
 			DB.Clauses(dbresolver.Use("users")).First(&order)
 			if order.OrderNo != "9913" {
-				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", i, order.OrderNo)
+				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", j, order.OrderNo)
 			}
 
 			DB.Clauses(dbresolver.Use("users"), dbresolver.Write).First(&order)
 			if order.OrderNo != "9914" {
-				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", i, order.OrderNo)
+				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", j, order.OrderNo)
 			}
 
 			var user User
 			DB.First(&user)
 			if user.Name != "9913" {
-				t.Fatalf("idx: %v: user should comes from read db, but got %v", i, user.Name)
+				t.Fatalf("idx: %v: user should comes from read db, but got %v", j, user.Name)
 			}
 
 			DB.Clauses(dbresolver.Write).First(&user)
 			if user.Name != "9914" {
-				t.Fatalf("idx: %v: user should comes from read db, but got %v", i, user.Name)
+				t.Fatalf("idx: %v: user should comes from read db, but got %v", j, user.Name)
 			}
 
 			var product Product
 			DB.First(&product)
 			if product.Name != "9913" {
-				t.Fatalf("idx: %v: product should comes from read db, but got %v", i, product.Name)
+				t.Fatalf("idx: %v: product should comes from read db, but got %v", j, product.Name)
 			}
 
 			DB.Clauses(dbresolver.Write).First(&product)
 			if product.Name != "9914" {
-				t.Fatalf("idx: %v: product should comes from write db, but got %v", i, product.Name)
+				t.Fatalf("idx: %v: product should comes from write db, but got %v", j, product.Name)
 			}
 
 			// test create
@@ -119,7 +119,9 @@ func TestDBResolver(t *testing.T) {
 				t.Fatalf("read user from write db, got error: %v", err)
 			}
 
-			if err := GetDB(9914).First(&User{}, "name = ?", "create").Error; err != nil {
+			DB9914 := GetDB(9914)
+
+			if err := DB9914.First(&User{}, "name = ?", "create").Error; err != nil {
 				t.Fatalf("read user from write db, got error: %v", err)
 			}
 
@@ -128,7 +130,7 @@ func TestDBResolver(t *testing.T) {
 				t.Fatalf("failed to update users, got error: %v", err)
 			}
 
-			if err := GetDB(9914).First(&User{}, "name = ?", "update").Error; err != nil {
+			if err := DB9914.First(&User{}, "name = ?", "update").Error; err != nil {
 				t.Fatalf("read user from write db, got error: %v", err)
 			}
 
@@ -147,7 +149,7 @@ func TestDBResolver(t *testing.T) {
 				t.Fatalf("failed to delete users, got error: %v", err)
 			}
 
-			if err := GetDB(9914).First(&User{}, "name = ?", "update").Error; err != gorm.ErrRecordNotFound {
+			if err := DB9914.First(&User{}, "name = ?", "update").Error; err != gorm.ErrRecordNotFound {
 				t.Fatalf("read user from write db after delete, got error: %v", err)
 			}
 		}

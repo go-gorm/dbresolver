@@ -18,6 +18,7 @@ type DBResolver struct {
 	resolvers        map[string]*resolver
 	global           *resolver
 	prepareStmtStore map[gorm.ConnPool]*gorm.PreparedStmtDB
+	compileCallbacks []func(gorm.ConnPool) error
 }
 
 type Config struct {
@@ -38,6 +39,10 @@ func (dr *DBResolver) Register(config Config, datas ...interface{}) *DBResolver 
 
 	if dr.resolvers == nil {
 		dr.resolvers = map[string]*resolver{}
+	}
+
+	if config.Policy == nil {
+		config.Policy = RandomPolicy{}
 	}
 
 	config.datas = datas
@@ -64,35 +69,21 @@ func (dr *DBResolver) compile() error {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools []gorm.ConnPool, err error) {
-	config := *dr.DB.Config
-	for _, dialector := range dialectors {
-		if db, err := gorm.Open(dialector, &config); err == nil {
-			dr.prepareStmtStore[db.Config.ConnPool] = &gorm.PreparedStmtDB{
-				ConnPool:    db.Config.ConnPool,
-				Stmts:       map[string]*sql.Stmt{},
-				PreparedSQL: make([]string, 0, 100),
-			}
-
-			connPools = append(connPools, db.Config.ConnPool)
-		} else {
-			return nil, err
-		}
-	}
-
-	return connPools, err
-}
-
 func (dr *DBResolver) compileConfig(config Config) (err error) {
-	connPool := dr.DB.Config.ConnPool
-	if config.Policy == nil {
-		config.Policy = RandomPolicy{}
+	var (
+		connPool = dr.DB.Config.ConnPool
+		r        = resolver{
+			dbResolver: dr,
+			policy:     config.Policy,
+		}
+	)
+
+	if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
+		connPool = preparedStmtDB.ConnPool
 	}
-	r := resolver{DBResolver: dr, policy: config.Policy}
 
 	if len(config.Sources) == 0 {
 		r.sources = []gorm.ConnPool{connPool}
@@ -125,14 +116,40 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 		return errors.New("conflicted global resolver")
 	}
 
+	for _, fc := range dr.compileCallbacks {
+		if err = r.call(fc); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (dr *DBResolver) resolve(stmt *gorm.Statement, op Operation) gorm.ConnPool {
-	if _, ok := stmt.Clauses[writeName]; ok {
-		op = Write
+func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools []gorm.ConnPool, err error) {
+	config := *dr.DB.Config
+	for _, dialector := range dialectors {
+		if db, err := gorm.Open(dialector, &config); err == nil {
+			dr.prepareStmtStore[db.Config.ConnPool] = &gorm.PreparedStmtDB{
+				ConnPool:    db.Config.ConnPool,
+				Stmts:       map[string]*sql.Stmt{},
+				PreparedSQL: make([]string, 0, 100),
+			}
+
+			connPool := db.Config.ConnPool
+			if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
+				connPool = preparedStmtDB.ConnPool
+			}
+
+			connPools = append(connPools, connPool)
+		} else {
+			return nil, err
+		}
 	}
 
+	return connPools, err
+}
+
+func (dr *DBResolver) resolve(stmt *gorm.Statement, op Operation) gorm.ConnPool {
 	if len(dr.resolvers) > 0 {
 		if u, ok := stmt.Clauses[usingName].Expression.(using); ok && u.Use != "" {
 			if r, ok := dr.resolvers[u.Use]; ok {
@@ -160,37 +177,4 @@ func (dr *DBResolver) resolve(stmt *gorm.Statement, op Operation) gorm.ConnPool 
 	}
 
 	return dr.global.resolve(stmt, op)
-}
-
-type resolver struct {
-	sources  []gorm.ConnPool
-	replicas []gorm.ConnPool
-	policy   Policy
-	*DBResolver
-}
-
-func (r *resolver) resolve(stmt *gorm.Statement, op Operation) (connPool gorm.ConnPool) {
-	if op == Read {
-		if len(r.replicas) == 1 {
-			connPool = r.replicas[0]
-		} else {
-			connPool = r.policy.Resolve(r.replicas)
-		}
-	} else if len(r.sources) == 1 {
-		connPool = r.sources[0]
-	} else {
-		connPool = r.policy.Resolve(r.sources)
-	}
-
-	if stmt.DB.PrepareStmt {
-		if preparedStmt, ok := r.prepareStmtStore[connPool]; ok {
-			return &gorm.PreparedStmtDB{
-				ConnPool: connPool,
-				Mux:      preparedStmt.Mux,
-				Stmts:    preparedStmt.Stmts,
-			}
-		}
-	}
-
-	return
 }

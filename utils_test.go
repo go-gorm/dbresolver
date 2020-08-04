@@ -10,6 +10,11 @@ func TestGetTableFromRawSQL(t *testing.T) {
 		{"select * from (select * from users), (select * from products)", "users"},
 		{"select * from users, products", "users"},
 		{"select * from users as u, products as p", "users"},
+		{"UPDATE users SET column1 = value1, column2 = value2", "users"},
+		{"DELETE FROM users WHERE condition;", "users"},
+		{"INSERT INTO users (column1, column2) VALUES (v1, v2)", "users"},
+		{"insert ignore into users (name,age) VALUES ('jinzhu',18);", "users"},
+		{"MERGE INTO users USING ", "users"},
 	}
 
 	for _, data := range datas {

@@ -11,7 +11,8 @@ func (dr *DBResolver) registerCallbacks(db *gorm.DB) {
 	dr.Callback().Query().Before("*").Register("gorm:db_resolver", dr.switchReplica)
 	dr.Callback().Update().Before("*").Register("gorm:db_resolver", dr.switchSource)
 	dr.Callback().Delete().Before("*").Register("gorm:db_resolver", dr.switchSource)
-	dr.Callback().Row().Before("*").Register("gorm:db_resolver", dr.switchGuess)
+	dr.Callback().Row().Before("*").Register("gorm:db_resolver", dr.switchReplica)
+	dr.Callback().Raw().Before("*").Register("gorm:db_resolver", dr.switchGuess)
 }
 
 func (dr *DBResolver) switchSource(db *gorm.DB) {

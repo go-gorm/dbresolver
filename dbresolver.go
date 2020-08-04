@@ -176,5 +176,9 @@ func (dr *DBResolver) resolve(stmt *gorm.Statement, op Operation) gorm.ConnPool 
 		}
 	}
 
-	return dr.global.resolve(stmt, op)
+	if dr.global != nil {
+		return dr.global.resolve(stmt, op)
+	}
+
+	return stmt.ConnPool
 }

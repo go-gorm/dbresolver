@@ -54,6 +54,7 @@ func (dr *DBResolver) Name() string {
 
 func (dr *DBResolver) Initialize(db *gorm.DB) error {
 	dr.DB = db
+	dr.registerCallbacks(db)
 	return dr.compile()
 }
 
@@ -88,7 +89,10 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 
 func (dr *DBResolver) compileConfig(config Config) (err error) {
 	connPool := dr.DB.Config.ConnPool
-	r := resolver{DBResolver: dr}
+	if config.Policy == nil {
+		config.Policy = RandomPolicy{}
+	}
+	r := resolver{DBResolver: dr, policy: config.Policy}
 
 	if len(config.Sources) == 0 {
 		r.sources = []gorm.ConnPool{connPool}
@@ -115,7 +119,7 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 				}
 			}
 		}
-	} else if dr.global != nil {
+	} else if dr.global == nil {
 		dr.global = &r
 	} else {
 		return errors.New("conflicted global resolver")

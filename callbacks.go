@@ -8,9 +8,9 @@ import (
 
 func (dr *DBResolver) registerCallbacks(db *gorm.DB) {
 	dr.Callback().Create().Before("*").Register("gorm:db_resolver", dr.switchSource)
-	dr.Callback().Query().Before("*").Register("gorm:db_resolver", dr.switchSource)
+	dr.Callback().Query().Before("*").Register("gorm:db_resolver", dr.switchReplica)
 	dr.Callback().Update().Before("*").Register("gorm:db_resolver", dr.switchSource)
-	dr.Callback().Delete().Before("*").Register("gorm:db_resolver", dr.switchReplica)
+	dr.Callback().Delete().Before("*").Register("gorm:db_resolver", dr.switchSource)
 	dr.Callback().Row().Before("*").Register("gorm:db_resolver", dr.switchGuess)
 }
 
@@ -37,12 +37,6 @@ func (dr *DBResolver) switchGuess(db *gorm.DB) {
 }
 
 func isTransaction(connPool gorm.ConnPool) bool {
-	switch connPool.(type) {
-	case gorm.TxBeginner:
-		return true
-	case gorm.ConnPoolBeginner:
-		return true
-	default:
-		return false
-	}
+	_, ok := connPool.(gorm.TxCommitter)
+	return ok
 }

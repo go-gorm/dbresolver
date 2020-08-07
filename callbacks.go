@@ -23,10 +23,15 @@ func (dr *DBResolver) switchSource(db *gorm.DB) {
 
 func (dr *DBResolver) switchReplica(db *gorm.DB) {
 	if !isTransaction(db.Statement.ConnPool) {
-		if _, ok := db.Statement.Clauses[writeName]; ok {
-			db.Statement.ConnPool = dr.resolve(db.Statement, Write)
+		if rawSQL := db.Statement.SQL.String(); len(rawSQL) > 0 {
+			dr.switchGuess(db)
 		} else {
-			db.Statement.ConnPool = dr.resolve(db.Statement, Read)
+			_, locking := db.Statement.Clauses["FOR"]
+			if _, ok := db.Statement.Clauses[writeName]; ok || locking {
+				db.Statement.ConnPool = dr.resolve(db.Statement, Write)
+			} else {
+				db.Statement.ConnPool = dr.resolve(db.Statement, Read)
+			}
 		}
 	}
 }
@@ -35,7 +40,7 @@ func (dr *DBResolver) switchGuess(db *gorm.DB) {
 	if !isTransaction(db.Statement.ConnPool) {
 		if _, ok := db.Statement.Clauses[writeName]; ok {
 			db.Statement.ConnPool = dr.resolve(db.Statement, Write)
-		} else if rawSQL := db.Statement.SQL.String(); len(rawSQL) > 6 && strings.EqualFold(rawSQL[:6], "select") {
+		} else if rawSQL := db.Statement.SQL.String(); len(rawSQL) > 10 && strings.EqualFold(rawSQL[:6], "select") && !strings.EqualFold(rawSQL[len(rawSQL)-10:], "for update") {
 			db.Statement.ConnPool = dr.resolve(db.Statement, Read)
 		} else {
 			db.Statement.ConnPool = dr.resolve(db.Statement, Write)

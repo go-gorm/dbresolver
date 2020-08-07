@@ -125,6 +125,15 @@ func TestDBResolver(t *testing.T) {
 				t.Fatalf("read user from write db, got error: %v", err)
 			}
 
+			var name string
+			if err := DB.Raw("select name from users").Row().Scan(&name); err != nil || name != "9913" {
+				t.Fatalf("read users from read db, name %v", name)
+			}
+
+			if err := DB.Debug().Raw("select name from users where name = ? for update", "create").Row().Scan(&name); err != nil || name != "create" {
+				t.Fatalf("read users from write db, name %v, err %v", name, err)
+			}
+
 			// test update
 			if err := DB.Model(&User{}).Where("name = ?", "create").Update("name", "update").Error; err != nil {
 				t.Fatalf("failed to update users, got error: %v", err)
@@ -135,9 +144,9 @@ func TestDBResolver(t *testing.T) {
 			}
 
 			// test raw sql
-			var name string
+			name = ""
 			if err := DB.Raw("select name from users where name = ?", "update").Row().Scan(&name); err == nil || name != "" {
-				t.Fatalf("can't read users from read db")
+				t.Fatalf("can't read users from read db, name %v", name)
 			}
 
 			if err := DB.Clauses(dbresolver.Write).Raw("select name from users where name = ?", "update").Row().Scan(&name); err != nil || name != "update" {

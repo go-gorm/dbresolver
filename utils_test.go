@@ -5,6 +5,7 @@ import "testing"
 func TestGetTableFromRawSQL(t *testing.T) {
 	datas := [][2]string{
 		{"select * from users as u", "users"},
+		{"select name from users", "users"},
 		{"select * from (select * from users) as u", "users"},
 		{"select * from (select * from users)", "users"},
 		{"select * from (select * from users), (select * from products)", "users"},

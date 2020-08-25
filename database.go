@@ -1,6 +1,7 @@
 package dbresolver
 
 import (
+	"context"
 	"time"
 
 	"gorm.io/gorm"
@@ -8,7 +9,11 @@ import (
 
 func (dr *DBResolver) SetConnMaxIdleTime(d time.Duration) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
-		connPool.(interface{ SetConnMaxIdleTime(time.Duration) }).SetConnMaxIdleTime(d)
+		if conn, ok := connPool.(interface{ SetConnMaxIdleTime(time.Duration) }); ok {
+			conn.SetConnMaxIdleTime(d)
+		} else {
+			dr.DB.Logger.Error(context.Background(), "SetConnMaxIdleTime not implemented for %#v, please use golang v1.15+", conn)
+		}
 		return nil
 	})
 
@@ -17,7 +22,11 @@ func (dr *DBResolver) SetConnMaxIdleTime(d time.Duration) *DBResolver {
 
 func (dr *DBResolver) SetConnMaxLifetime(d time.Duration) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
-		connPool.(interface{ SetConnMaxLifetime(time.Duration) }).SetConnMaxLifetime(d)
+		if conn, ok := connPool.(interface{ SetConnMaxLifetime(time.Duration) }); ok {
+			conn.SetConnMaxLifetime(d)
+		} else {
+			dr.DB.Logger.Error(context.Background(), "SetConnMaxLifetime not implemented for %#v", conn)
+		}
 		return nil
 	})
 
@@ -26,7 +35,11 @@ func (dr *DBResolver) SetConnMaxLifetime(d time.Duration) *DBResolver {
 
 func (dr *DBResolver) SetMaxIdleConns(n int) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
-		connPool.(interface{ SetMaxIdleConns(int) }).SetMaxIdleConns(n)
+		if conn, ok := connPool.(interface{ SetMaxIdleConns(int) }); ok {
+			conn.SetMaxIdleConns(n)
+		} else {
+			dr.DB.Logger.Error(context.Background(), "SetMaxIdleConns not implemented for %#v", conn)
+		}
 		return nil
 	})
 
@@ -35,7 +48,11 @@ func (dr *DBResolver) SetMaxIdleConns(n int) *DBResolver {
 
 func (dr *DBResolver) SetMaxOpenConns(n int) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
-		connPool.(interface{ SetMaxOpenConns(int) }).SetMaxOpenConns(n)
+		if conn, ok := connPool.(interface{ SetMaxOpenConns(int) }); ok {
+			conn.SetMaxOpenConns(n)
+		} else {
+			dr.DB.Logger.Error(context.Background(), "SetMaxOpenConns not implemented for %#v", conn)
+		}
 		return nil
 	})
 

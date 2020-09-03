@@ -8,3 +8,5 @@ gorm.io/driver/mysql v0.3.2 h1:Kaa0S+IHW+4qow6dRAdekNYaKeGBboIkh44pYdLWjIE=
 gorm.io/driver/mysql v0.3.2/go.mod h1:jC/HyPAZJ0xqfGlOqYybd8oNPMtGrkNgvwjWuKDT7f0=
 gorm.io/gorm v0.2.36 h1:mxqXJo5SET3VzKCilIqLL6ua4BtpReu/0PieEkEBu5M=
 gorm.io/gorm v0.2.36/go.mod h1:0HFTzE/SqkGTzK6TlDPPQbAYCluiVvhzoA1+aVyzenw=
+gorm.io/gorm v0.2.38 h1:zHrkh0Xckf78itpEmA4MdjgU9HcelE3gG5FeEb+MQYM=
+gorm.io/gorm v0.2.38/go.mod h1:0HFTzE/SqkGTzK6TlDPPQbAYCluiVvhzoA1+aVyzenw=

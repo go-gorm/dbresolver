@@ -129,15 +129,15 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 	config := *dr.DB.Config
 	for _, dialector := range dialectors {
 		if db, err := gorm.Open(dialector, &config); err == nil {
-			dr.prepareStmtStore[db.Config.ConnPool] = &gorm.PreparedStmtDB{
-				ConnPool:    db.Config.ConnPool,
-				Stmts:       map[string]*sql.Stmt{},
-				PreparedSQL: make([]string, 0, 100),
-			}
-
 			connPool := db.Config.ConnPool
 			if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
 				connPool = preparedStmtDB.ConnPool
+			}
+
+			dr.prepareStmtStore[connPool] = &gorm.PreparedStmtDB{
+				ConnPool:    db.Config.ConnPool,
+				Stmts:       map[string]*sql.Stmt{},
+				PreparedSQL: make([]string, 0, 100),
 			}
 
 			connPools = append(connPools, connPool)

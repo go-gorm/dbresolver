@@ -3,6 +3,7 @@ package dbresolver
 import (
 	"database/sql"
 	"errors"
+
 	"gorm.io/gorm"
 )
 

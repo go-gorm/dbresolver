@@ -22,10 +22,10 @@ type DBResolver struct {
 }
 
 type Config struct {
-	Sources             []gorm.Dialector
-	Replicas            []gorm.Dialector
-	Policy              Policy
-	datas               []interface{}
+	Sources  []gorm.Dialector
+	Replicas []gorm.Dialector
+	Policy   Policy
+	datas    []interface{}
 }
 
 func Register(config Config, datas ...interface{}) *DBResolver {

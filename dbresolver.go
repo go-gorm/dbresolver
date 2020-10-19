@@ -3,7 +3,6 @@ package dbresolver
 import (
 	"database/sql"
 	"errors"
-
 	"gorm.io/gorm"
 )
 
@@ -14,18 +13,19 @@ const (
 
 type DBResolver struct {
 	*gorm.DB
-	configs          []Config
-	resolvers        map[string]*resolver
-	global           *resolver
-	prepareStmtStore map[gorm.ConnPool]*gorm.PreparedStmtDB
-	compileCallbacks []func(gorm.ConnPool) error
+	IgnoreReplicasError bool
+	configs             []Config
+	resolvers           map[string]*resolver
+	global              *resolver
+	prepareStmtStore    map[gorm.ConnPool]*gorm.PreparedStmtDB
+	compileCallbacks    []func(gorm.ConnPool) error
 }
 
 type Config struct {
-	Sources  []gorm.Dialector
-	Replicas []gorm.Dialector
-	Policy   Policy
-	datas    []interface{}
+	Sources             []gorm.Dialector
+	Replicas            []gorm.Dialector
+	Policy              Policy
+	datas               []interface{}
 }
 
 func Register(config Config, datas ...interface{}) *DBResolver {
@@ -128,7 +128,8 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools []gorm.ConnPool, err error) {
 	config := *dr.DB.Config
 	for _, dialector := range dialectors {
-		if db, err := gorm.Open(dialector, &config); err == nil {
+		db, err := gorm.Open(dialector, &config)
+		if err == nil || dr.IgnoreReplicasError {
 			connPool := db.Config.ConnPool
 			if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
 				connPool = preparedStmtDB.ConnPool

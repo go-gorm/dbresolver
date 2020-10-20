@@ -22,10 +22,10 @@ func (dr *DBResolver) SetConnMaxIdleTime(d time.Duration) *DBResolver {
 
 func (dr *DBResolver) SetConnMaxLifeTime(d time.Duration) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
-		if conn, ok := connPool.(interface{ SetConnMaxLifetime(time.Duration) }); ok {
-			conn.SetConnMaxLifetime(d)
+		if conn, ok := connPool.(interface{ SetConnMaxLifeTime(time.Duration) }); ok {
+			conn.SetConnMaxLifeTime(d)
 		} else {
-			dr.DB.Logger.Error(context.Background(), "SetConnMaxLifetime not implemented for %#v", conn)
+			dr.DB.Logger.Error(context.Background(), "SetConnMaxLifeTime not implemented for %#v", conn)
 		}
 		return nil
 	})

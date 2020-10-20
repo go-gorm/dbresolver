@@ -103,7 +103,7 @@ Currently only the `RandomPolicy` implemented and it is the default option if no
 DB.Use(
   dbresolver.Register(dbresolver.Config{ /* xxx */ }).
   SetConnMaxIdleTime(time.Hour).
-  SetConnMaxLifetime(24 * time.Hour).
+  SetConnMaxLifeTime(8 * time.Hour).
   SetMaxIdleConns(100).
   SetMaxOpenConns(200)
 )

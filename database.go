@@ -20,7 +20,7 @@ func (dr *DBResolver) SetConnMaxIdleTime(d time.Duration) *DBResolver {
 	return dr
 }
 
-func (dr *DBResolver) SetConnMaxLifetime(d time.Duration) *DBResolver {
+func (dr *DBResolver) SetConnMaxLifeTime(d time.Duration) *DBResolver {
 	dr.Call(func(connPool gorm.ConnPool) error {
 		if conn, ok := connPool.(interface{ SetConnMaxLifetime(time.Duration) }); ok {
 			conn.SetConnMaxLifetime(d)

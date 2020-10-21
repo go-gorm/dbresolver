@@ -3,6 +3,7 @@ package dbresolver
 import (
 	"database/sql"
 	"errors"
+	"sync"
 
 	"gorm.io/gorm"
 )
@@ -137,6 +138,7 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 			dr.prepareStmtStore[connPool] = &gorm.PreparedStmtDB{
 				ConnPool:    db.Config.ConnPool,
 				Stmts:       map[string]*sql.Stmt{},
+				Mux:         &sync.RWMutex{},
 				PreparedSQL: make([]string, 0, 100),
 			}
 

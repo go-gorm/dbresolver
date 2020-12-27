@@ -149,6 +149,16 @@ func TestDBResolver(t *testing.T) {
 				t.Fatalf("can't read users from read db, name %v", name)
 			}
 
+			if err := DB.Raw(" select name from users where name = ?", "9913").Row().Scan(&name); err != nil {
+				t.Fatalf("(raw sql has leading space) should go to read db, got error: %v", err)
+			}
+
+			if err := DB.Raw(`
+select name
+from users where name = ?`, "9913").Row().Scan(&name); err != nil {
+				t.Fatalf("(raw sql has leading newline) should go to read db, got error: %v", err)
+			}
+
 			if err := DB.Clauses(dbresolver.Write).Raw("select name from users where name = ?", "update").Row().Scan(&name); err != nil || name != "update" {
 				t.Fatalf("read users from write db, error %v, name %v", err, name)
 			}

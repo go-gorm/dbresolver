@@ -65,8 +65,44 @@ func TestDBResolver(t *testing.T) {
 		}
 
 		for j := 0; j < 20; j++ {
-			// test query
 			var order Order
+			// test transaction
+			tx := DB.Begin()
+			tx.Find(&order)
+			if order.OrderNo != "9911" {
+				t.Fatalf("idx: %v: order should comes from default db, but got order %v", j, order.OrderNo)
+			}
+			tx.Rollback()
+
+			tx = DB.Clauses(dbresolver.Read).Begin()
+			tx.Find(&order)
+			if order.OrderNo != "9912" && order.OrderNo != "9913" {
+				t.Fatalf("idx: %v: order should comes from read db, but got order %v", j, order.OrderNo)
+			}
+			tx.Rollback()
+
+			tx = DB.Clauses(dbresolver.Write).Begin()
+			tx.Find(&order)
+			if order.OrderNo != "9911" {
+				t.Fatalf("idx: %v: order should comes from write db, but got order %v", j, order.OrderNo)
+			}
+			tx.Rollback()
+
+			tx = DB.Clauses(dbresolver.Use("users"), dbresolver.Write).Begin()
+			tx.Find(&order)
+			if order.OrderNo != "9914" {
+				t.Fatalf("idx: %v: order should comes from users, write db, but got order %v", j, order.OrderNo)
+			}
+			tx.Rollback()
+
+			tx = DB.Clauses(dbresolver.Write, dbresolver.Use("users")).Begin()
+			tx.Find(&order)
+			if order.OrderNo != "9914" {
+				t.Fatalf("idx: %v: order should comes from users, write db, but got order %v", j, order.OrderNo)
+			}
+			tx.Rollback()
+
+			// test query
 			DB.First(&order)
 			if order.OrderNo != "9912" && order.OrderNo != "9913" {
 				t.Fatalf("idx: %v: order should comes from read db, but got order %v", j, order.OrderNo)

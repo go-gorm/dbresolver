@@ -2,7 +2,7 @@ version: '3'
 
 services:
   mysql1:
-    image: 'mysql:latest'
+    image: 'mysql/mysql-server:latest'
     ports:
       - 9911:3306
     environment:
@@ -11,7 +11,7 @@ services:
       - MYSQL_PASSWORD=gorm
       - MYSQL_RANDOM_ROOT_PASSWORD="yes"
   mysql2:
-    image: 'mysql:latest'
+    image: 'mysql/mysql-server:latest'
     ports:
       - 9912:3306
     environment:
@@ -20,7 +20,7 @@ services:
       - MYSQL_PASSWORD=gorm
       - MYSQL_RANDOM_ROOT_PASSWORD="yes"
   mysql3:
-    image: 'mysql:latest'
+    image: 'mysql/mysql-server:latest'
     ports:
       - 9913:3306
     environment:
@@ -29,7 +29,7 @@ services:
       - MYSQL_PASSWORD=gorm
       - MYSQL_RANDOM_ROOT_PASSWORD="yes"
   mysql4:
-    image: 'mysql:latest'
+    image: 'mysql/mysql-server:latest'
     ports:
       - 9914:3306
     environment:

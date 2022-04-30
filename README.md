@@ -93,7 +93,7 @@ But you can specifies which DB to use before starting a transaction, for example
 tx := DB.Clauses(dbresolver.Read).Begin()
 
 // Start transaction based on default sources db
-tx := DB.Clauses(dbresolver.Read).Begin()
+tx := DB.Clauses(dbresolver.Write).Begin()
 
 // Start transaction based on `secondary`'s sources
 tx := DB.Clauses(dbresolver.Use("secondary"), dbresolver.Write).Begin()

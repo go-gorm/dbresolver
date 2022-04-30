@@ -1,26 +1,31 @@
 package dbresolver
 
-import "gorm.io/gorm/clause"
+import (
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
 
+// Operation specifies dbresolver mode
 type Operation string
 
 const writeName = "gorm:db_resolver:write"
 
-func (op Operation) Name() string {
+// ModifyStatement modify operation mode
+func (op Operation) ModifyStatement(stmt *gorm.Statement) {
+	optName := "gorm:db_resolver:read"
 	if op == Write {
-		return writeName
-	} else {
-		return "gorm:db_resolver:read"
+		optName = writeName
 	}
+
+	stmt.Clauses[optName] = clause.Clause{}
 }
 
+// Build implements clause.Expression interface
 func (op Operation) Build(clause.Builder) {
 }
 
-func (op Operation) MergeClause(*clause.Clause) {
-}
-
-func Use(str string) clause.Interface {
+// Use specifies configuration
+func Use(str string) clause.Expression {
 	return using{Use: str}
 }
 
@@ -30,13 +35,11 @@ type using struct {
 
 const usingName = "gorm:db_resolver:using"
 
-func (u using) Name() string {
-	return usingName
+// ModifyStatement modify operation mode
+func (u using) ModifyStatement(stmt *gorm.Statement) {
+	stmt.Clauses[usingName] = clause.Clause{Expression: u}
 }
 
+// Build implements clause.Expression interface
 func (u using) Build(clause.Builder) {
-}
-
-func (u using) MergeClause(c *clause.Clause) {
-	c.Expression = u
 }

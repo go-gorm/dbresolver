@@ -24,7 +24,9 @@ func (op Operation) ModifyStatement(stmt *gorm.Statement) {
 
 	if optName != "" {
 		stmt.Clauses[optName] = clause.Clause{}
-		stmt.DB.Callback().Query().Get("gorm:db_resolver")(stmt.DB)
+		if fc := stmt.DB.Callback().Query().Get("gorm:db_resolver"); fc != nil {
+			fc(stmt.DB)
+		}
 	}
 }
 
@@ -46,7 +48,9 @@ const usingName = "gorm:db_resolver:using"
 // ModifyStatement modify operation mode
 func (u using) ModifyStatement(stmt *gorm.Statement) {
 	stmt.Clauses[usingName] = clause.Clause{Expression: u}
-	stmt.DB.Callback().Query().Get("gorm:db_resolver")(stmt.DB)
+	if fc := stmt.DB.Callback().Query().Get("gorm:db_resolver"); fc != nil {
+		fc(stmt.DB)
+	}
 }
 
 // Build implements clause.Expression interface

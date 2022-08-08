@@ -66,6 +66,12 @@ func (dr *DBResolver) Call(fc func(connPool gorm.ConnPool) error) error {
 				return err
 			}
 		}
+
+		if dr.global != nil {
+			if err := dr.global.call(fc); err != nil {
+				return err
+			}
+		}
 	} else {
 		dr.compileCallbacks = append(dr.compileCallbacks, fc)
 	}

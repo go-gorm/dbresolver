@@ -1,6 +1,8 @@
 package dbresolver
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type resolver struct {
 	sources    []gorm.ConnPool

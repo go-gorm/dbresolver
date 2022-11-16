@@ -2,10 +2,12 @@ package dbresolver_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"
 )
 
@@ -50,6 +52,11 @@ func TestDBResolver(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to connect db, got error: %v", err)
 		}
+		if debug := os.Getenv("DEBUG"); debug == "true" {
+			DB.Logger = DB.Logger.LogMode(logger.Info)
+		} else if debug == "false" {
+			DB.Logger = DB.Logger.LogMode(logger.Silent)
+		}
 
 		if err := DB.Use(dbresolver.Register(dbresolver.Config{
 			Sources: []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9911)/gorm?charset=utf8&parseTime=True&loc=Local")},
@@ -57,9 +64,11 @@ func TestDBResolver(t *testing.T) {
 				mysql.Open("gorm:gorm@tcp(localhost:9912)/gorm?charset=utf8&parseTime=True&loc=Local"),
 				mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local"),
 			},
+			TraceResolverMode: true,
 		}).Register(dbresolver.Config{
-			Sources:  []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9914)/gorm?charset=utf8&parseTime=True&loc=Local")},
-			Replicas: []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			Sources:           []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9914)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			Replicas:          []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			TraceResolverMode: true,
 		}, "users", &Product{}).SetMaxOpenConns(5)); err != nil {
 			t.Fatalf("failed to use plugin, got error: %v", err)
 		}

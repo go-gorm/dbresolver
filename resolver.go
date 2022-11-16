@@ -5,10 +5,11 @@ import (
 )
 
 type resolver struct {
-	sources    []gorm.ConnPool
-	replicas   []gorm.ConnPool
-	policy     Policy
-	dbResolver *DBResolver
+	sources           []gorm.ConnPool
+	replicas          []gorm.ConnPool
+	policy            Policy
+	dbResolver        *DBResolver
+	traceResolverMode bool
 }
 
 func (r *resolver) resolve(stmt *gorm.Statement, op Operation) (connPool gorm.ConnPool) {
@@ -18,10 +19,19 @@ func (r *resolver) resolve(stmt *gorm.Statement, op Operation) (connPool gorm.Co
 		} else {
 			connPool = r.policy.Resolve(r.replicas)
 		}
+		if r.traceResolverMode {
+			markStmtResolverMode(stmt, ResolverModeReplica)
+		}
 	} else if len(r.sources) == 1 {
 		connPool = r.sources[0]
+		if r.traceResolverMode {
+			markStmtResolverMode(stmt, ResolverModeSource)
+		}
 	} else {
 		connPool = r.policy.Resolve(r.sources)
+		if r.traceResolverMode {
+			markStmtResolverMode(stmt, ResolverModeSource)
+		}
 	}
 
 	if stmt.DB.PrepareStmt {

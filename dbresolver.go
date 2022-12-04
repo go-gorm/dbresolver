@@ -22,10 +22,11 @@ type DBResolver struct {
 }
 
 type Config struct {
-	Sources  []gorm.Dialector
-	Replicas []gorm.Dialector
-	Policy   Policy
-	datas    []interface{}
+	Sources           []gorm.Dialector
+	Replicas          []gorm.Dialector
+	Policy            Policy
+	datas             []interface{}
+	TraceResolverMode bool
 }
 
 func Register(config Config, datas ...interface{}) *DBResolver {
@@ -76,8 +77,9 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 	var (
 		connPool = dr.DB.Config.ConnPool
 		r        = resolver{
-			dbResolver: dr,
-			policy:     config.Policy,
+			dbResolver:        dr,
+			policy:            config.Policy,
+			traceResolverMode: config.TraceResolverMode,
 		}
 	)
 
@@ -120,6 +122,10 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 		if err = r.call(fc); err != nil {
 			return err
 		}
+	}
+
+	if config.TraceResolverMode {
+		dr.Logger = NewResolverModeLogger(dr.Logger)
 	}
 
 	return nil

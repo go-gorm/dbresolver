@@ -27,6 +27,8 @@ DB.Use(dbresolver.Register(dbresolver.Config{
   Replicas: []gorm.Dialector{mysql.Open("db3_dsn"), mysql.Open("db4_dsn")},
   // sources/replicas load balancing policy
   Policy: dbresolver.RandomPolicy{},
+  // print sources/replicas mode in logger
+  ResolverModeReplica: true,
 }).Register(dbresolver.Config{
   // use `db1` as sources (DB's default connection), `db5` as replicas for `User`, `Address`
   Replicas: []gorm.Dialector{mysql.Open("db5_dsn")},

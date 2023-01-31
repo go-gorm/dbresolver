@@ -18,14 +18,14 @@ func (op Operation) ModifyStatement(stmt *gorm.Statement) {
 	var optName string
 	if op == Write {
 		optName = writeName
-		delete(stmt.Clauses, readName)
+		stmt.Settings.Delete(readName)
 	} else if op == Read {
 		optName = readName
-		delete(stmt.Clauses, writeName)
+		stmt.Settings.Delete(writeName)
 	}
 
 	if optName != "" {
-		stmt.Clauses[optName] = clause.Clause{}
+		stmt.Settings.Store(optName, struct{}{})
 		if fc := stmt.DB.Callback().Query().Get("gorm:db_resolver"); fc != nil {
 			fc(stmt.DB)
 		}

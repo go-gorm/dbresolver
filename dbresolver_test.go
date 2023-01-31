@@ -12,8 +12,9 @@ import (
 )
 
 type User struct {
-	ID   uint
-	Name string
+	ID     uint
+	Name   string
+	Orders []Order
 }
 
 type Product struct {
@@ -24,6 +25,7 @@ type Product struct {
 type Order struct {
 	ID      uint
 	OrderNo string
+	UserID  uint
 }
 
 func GetDB(port int) *gorm.DB {
@@ -40,9 +42,10 @@ func init() {
 		DB.Migrator().DropTable(&User{}, &Product{}, &Order{})
 		DB.AutoMigrate(&User{}, &Product{}, &Order{})
 
-		DB.Create(&User{Name: fmt.Sprintf("%v", port)})
+		user := User{Name: fmt.Sprintf("%v", port)}
+		DB.Create(&user)
 		DB.Create(&Product{Name: fmt.Sprintf("%v", port)})
-		DB.Create(&Order{OrderNo: fmt.Sprintf("%v", port)})
+		DB.Create(&Order{OrderNo: fmt.Sprintf("%v", port), UserID: user.ID})
 	}
 }
 
@@ -152,6 +155,27 @@ func TestDBResolver(t *testing.T) {
 			DB.Clauses(dbresolver.Write).First(&product)
 			if product.Name != "9914" {
 				t.Fatalf("idx: %v: product should comes from write db, but got %v", j, product.Name)
+			}
+
+			// test preload
+			if err := DB.Clauses(dbresolver.Write).Preload("Orders").First(&user).Error; err != nil || len(user.Orders) != 1 {
+				t.Fatalf("failed to preload orders, count: %v, got error: %v", len(user.Orders), err)
+			}
+
+			// order source 9911, user source: 9914
+			if user.Orders[0].OrderNo != "9911" || user.Name != "9914" {
+				t.Fatalf("incorrect order info: userName: %v, orderNo: %v", user.Name, user.Orders[0].OrderNo)
+			}
+
+			if err := DB.Preload("Orders", func(tx *gorm.DB) *gorm.DB {
+				return tx.Clauses(dbresolver.Write)
+			}).First(&user).Error; err != nil || len(user.Orders) != 1 {
+				t.Fatalf("failed to preload orders, count: %v, got error: %v", len(user.Orders), err)
+			}
+
+			// order source 9911, user replica: 9913
+			if user.Orders[0].OrderNo != "9911" || user.Name != "9913" {
+				t.Fatalf("incorrect order info: userName: %v, orderNo: %v", user.Name, user.Orders[0].OrderNo)
 			}
 
 			// test create

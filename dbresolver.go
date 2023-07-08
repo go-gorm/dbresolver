@@ -61,7 +61,7 @@ func (dr *DBResolver) Name() string {
 
 func (dr *DBResolver) Initialize(db *gorm.DB) error {
 	dr.original = db.ConnPool
-	db.ConnPool = NewConnPool(dr.original, dr)
+	db.ConnPool = newConnPool(dr.original, dr)
 	dr.DB = db
 	dr.registerCallbacks(db)
 	return dr.compile()

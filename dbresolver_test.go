@@ -243,3 +243,63 @@ from users where name = ?`, "9913").Row().Scan(&name); err != nil {
 		}
 	}
 }
+
+func TestConnPool(t *testing.T) {
+	for i := 0; i < 2; i++ {
+		DB, err := gorm.Open(mysql.Open("gorm:gorm@tcp(localhost:9911)/gorm?charset=utf8&parseTime=True&loc=Local"), &gorm.Config{PrepareStmt: i%2 == 0})
+		if err != nil {
+			t.Fatalf("failed to connect db, got error: %v", err)
+		}
+		if debug := os.Getenv("DEBUG"); debug == "true" {
+			DB.Logger = DB.Logger.LogMode(logger.Info)
+		} else if debug == "false" {
+			DB.Logger = DB.Logger.LogMode(logger.Silent)
+		}
+
+		if err := DB.Use(dbresolver.Register(dbresolver.Config{
+			Sources:           []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9912)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			Replicas:          []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			TraceResolverMode: true,
+		}).Register(dbresolver.Config{
+			Sources:           []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9914)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			Replicas:          []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local")},
+			TraceResolverMode: true,
+		}, "users", &Product{}).SetMaxOpenConns(5)); err != nil {
+			t.Fatalf("failed to use plugin, got error: %v", err)
+		}
+
+		tests := []struct {
+			name string
+			db   *gorm.DB
+			want int
+		}{
+			{"global", DB, 9911},
+			{"source", DB.Clauses(dbresolver.Write), 9912},
+			{"replica", DB.Clauses(dbresolver.Read), 9913},
+			{"table global", DB.Table("users"), 9911},
+			{"table source", DB.Table("users").Clauses(dbresolver.Write), 9914},
+			{"table replica", DB.Table("users").Clauses(dbresolver.Read), 9913},
+			{"model global", DB.Model(&Product{}), 9911},
+			{"model source", DB.Model(&Product{}).Clauses(dbresolver.Write), 9914},
+			{"model replica", DB.Model(&Product{}).Clauses(dbresolver.Read), 9913},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				db, err := tt.db.DB()
+				if err != nil {
+					t.Fatalf("failed to get *sql.DB, got error: %v", err)
+				}
+
+				var got int
+				if err := db.QueryRow("SELECT order_no FROM orders LIMIT 1").Scan(&got); err != nil {
+					t.Fatalf("failed to get order_no, got error: %v", err)
+				}
+
+				if got != tt.want {
+					t.Errorf("got %v, want %v", got, tt.want)
+				}
+			})
+		}
+	}
+}

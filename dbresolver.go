@@ -14,6 +14,7 @@ const (
 
 type DBResolver struct {
 	*gorm.DB
+	original         gorm.ConnPool
 	configs          []Config
 	resolvers        map[string]*resolver
 	global           *resolver
@@ -59,6 +60,8 @@ func (dr *DBResolver) Name() string {
 }
 
 func (dr *DBResolver) Initialize(db *gorm.DB) error {
+	dr.original = db.ConnPool
+	db.ConnPool = newConnPool(dr.original, dr)
 	dr.DB = db
 	dr.registerCallbacks(db)
 	return dr.compile()
@@ -157,35 +160,46 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 }
 
 func (dr *DBResolver) resolve(stmt *gorm.Statement, op Operation) gorm.ConnPool {
+	if r := dr.getResolver(stmt); r != nil {
+		return r.resolve(stmt, op)
+	}
+	return stmt.ConnPool
+}
+
+func (dr *DBResolver) getResolver(stmt *gorm.Statement) *resolver {
 	if len(dr.resolvers) > 0 {
 		if u, ok := stmt.Clauses[usingName].Expression.(using); ok && u.Use != "" {
 			if r, ok := dr.resolvers[u.Use]; ok {
-				return r.resolve(stmt, op)
+				return r
 			}
 		}
 
 		if stmt.Table != "" {
 			if r, ok := dr.resolvers[stmt.Table]; ok {
-				return r.resolve(stmt, op)
+				return r
+			}
+		}
+
+		if stmt.Model != nil {
+			if err := stmt.Parse(stmt.Model); err == nil {
+				if r, ok := dr.resolvers[stmt.Table]; ok {
+					return r
+				}
 			}
 		}
 
 		if stmt.Schema != nil {
 			if r, ok := dr.resolvers[stmt.Schema.Table]; ok {
-				return r.resolve(stmt, op)
+				return r
 			}
 		}
 
 		if rawSQL := stmt.SQL.String(); rawSQL != "" {
 			if r, ok := dr.resolvers[getTableFromRawSQL(rawSQL)]; ok {
-				return r.resolve(stmt, op)
+				return r
 			}
 		}
 	}
 
-	if dr.global != nil {
-		return dr.global.resolve(stmt, op)
-	}
-
-	return stmt.ConnPool
+	return dr.global
 }

@@ -22,6 +22,11 @@ type resolverModeLogger struct {
 	logger.Interface
 }
 
+func (l resolverModeLogger) LogMode(level logger.LogLevel) logger.Interface {
+	l.Interface = l.Interface.LogMode(level)
+	return l
+}
+
 func (l resolverModeLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
 	var splitFn = func() (sql string, rowsAffected int64) {
 		sql, rowsAffected = fc()

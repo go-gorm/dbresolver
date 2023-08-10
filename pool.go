@@ -20,22 +20,31 @@ func newConnPool(base gorm.ConnPool, dr *DBResolver) connPool {
 // GetDBConnWithContext gets *sql.DB connection based on the context. If no
 // information is available, returns original connection.
 func (p connPool) GetDBConnWithContext(db *gorm.DB) (*sql.DB, error) {
+	connPool := db.ConnPool
+
 	if stmt := db.Statement; stmt != nil {
 		if r := p.dr.getResolver(stmt); r != nil {
 			if _, ok := db.Statement.Settings.Load(readName); ok {
-				db = p.wrap(r.resolve(stmt, Read))
+				connPool = r.resolve(stmt, Read)
 			} else if _, ok := db.Statement.Settings.Load(writeName); ok {
-				db = p.wrap(r.resolve(stmt, Write))
+				connPool = r.resolve(stmt, Write)
 			} else {
-				db = p.wrap(p.dr.original)
+				connPool = p.dr.original
 			}
-
 		}
 	}
 
-	return db.DB()
-}
+	if sqlDB, ok := connPool.(*sql.DB); ok {
+		return sqlDB, nil
+	}
 
-func (connPool) wrap(cp gorm.ConnPool) *gorm.DB {
-	return &gorm.DB{Config: &gorm.Config{ConnPool: cp}}
+	if connPool, ok := connPool.(gorm.GetDBConnectorWithContext); ok {
+		return connPool.GetDBConnWithContext(db)
+	}
+
+	if connPool, ok := connPool.(gorm.GetDBConnector); ok {
+		return connPool.GetDBConn()
+	}
+
+	return nil, gorm.ErrInvalidDB
 }

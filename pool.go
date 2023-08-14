@@ -41,7 +41,7 @@ func (p connPool) GetDBConnWithContext(db *gorm.DB) (*sql.DB, error) {
 		return sqlDB, nil
 	}
 
-	if pool, ok := gormPool.(gorm.GetDBConnectorWithContext); ok && gormPool != p {
+	if pool, ok := gormPool.(gorm.GetDBConnectorWithContext); ok {
 		return pool.GetDBConnWithContext(db)
 	}
 

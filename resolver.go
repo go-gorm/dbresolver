@@ -51,38 +51,38 @@ func (r *resolver) resolve(stmt *gorm.Statement, op Operation) (connPool gorm.Co
 
 func (r *resolver) call(fc func(connPool gorm.ConnPool) error) error {
 	for _, s := range r.sources {
-		if err := fc(r.convertConnPool(s)); err != nil {
+		if err := fc(s); err != nil {
 			return err
 		}
 	}
 
 	for _, re := range r.replicas {
-		if err := fc(r.convertConnPool(re)); err != nil {
+		if err := fc(re); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *resolver) convertConnPool(connPool gorm.ConnPool) gorm.ConnPool {
+func ConnPoolToSqlDB(connPool gorm.ConnPool, db *gorm.DB) (*sql.DB, bool) {
 	if connPool == nil {
-		return nil
+		return nil, false
 	}
 	if sqldb, ok := connPool.(*sql.DB); ok && sqldb != nil {
-		return sqldb
+		return sqldb, true
 	}
 	if dbConnector, ok := connPool.(gorm.GetDBConnector); ok && dbConnector != nil {
 		if sqldb, err := dbConnector.GetDBConn(); sqldb != nil || err != nil {
-			return sqldb
+			return sqldb, true
 		}
 	}
-	if r == nil || r.dbResolver == nil || r.dbResolver.DB == nil {
-		return connPool
+	if db == nil {
+		return nil, false
 	}
-	if connPool, ok := connPool.(gorm.GetDBConnectorWithContext); ok {
-		if sqldb, err := connPool.GetDBConnWithContext(r.dbResolver.DB); sqldb != nil || err != nil {
-			return sqldb
+	if pool, ok := connPool.(gorm.GetDBConnectorWithContext); ok {
+		if sqldb, err := pool.GetDBConnWithContext(db); sqldb != nil || err != nil {
+			return sqldb, true
 		}
 	}
-	return connPool
+	return nil, false
 }

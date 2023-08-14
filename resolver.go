@@ -1,6 +1,8 @@
 package dbresolver
 
 import (
+	"database/sql"
+
 	"gorm.io/gorm"
 )
 
@@ -49,15 +51,38 @@ func (r *resolver) resolve(stmt *gorm.Statement, op Operation) (connPool gorm.Co
 
 func (r *resolver) call(fc func(connPool gorm.ConnPool) error) error {
 	for _, s := range r.sources {
-		if err := fc(s); err != nil {
+		if err := fc(r.convertConnPool(s)); err != nil {
 			return err
 		}
 	}
 
-	for _, r := range r.replicas {
-		if err := fc(r); err != nil {
+	for _, re := range r.replicas {
+		if err := fc(r.convertConnPool(re)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (r *resolver) convertConnPool(connPool gorm.ConnPool) gorm.ConnPool {
+	if connPool == nil {
+		return nil
+	}
+	if sqldb, ok := connPool.(*sql.DB); ok && sqldb != nil {
+		return sqldb
+	}
+	if dbConnector, ok := connPool.(gorm.GetDBConnector); ok && dbConnector != nil {
+		if sqldb, err := dbConnector.GetDBConn(); sqldb != nil || err != nil {
+			return sqldb
+		}
+	}
+	if r == nil || r.dbResolver == nil || r.dbResolver.DB == nil {
+		return connPool
+	}
+	if connPool, ok := connPool.(gorm.GetDBConnectorWithContext); ok {
+		if sqldb, err := connPool.GetDBConnWithContext(r.dbResolver.DB); sqldb != nil || err != nil {
+			return sqldb
+		}
+	}
+	return connPool
 }

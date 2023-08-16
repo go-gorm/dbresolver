@@ -1,6 +1,7 @@
 package dbresolver
 
 import (
+	"context"
 	"database/sql"
 
 	"gorm.io/gorm"
@@ -15,6 +16,18 @@ type connPool struct {
 // newConnPool creates a new ConnPool.
 func newConnPool(base gorm.ConnPool, dr *DBResolver) connPool {
 	return connPool{ConnPool: base, dr: dr}
+}
+
+func (p connPool) BeginTx(ctx context.Context, opt *sql.TxOptions) (conn gorm.ConnPool, err error) {
+	switch beginner := p.ConnPool.(type) {
+	case gorm.TxBeginner:
+		conn, err = beginner.BeginTx(ctx, opt)
+	case gorm.ConnPoolBeginner:
+		conn, err = beginner.BeginTx(ctx, opt)
+	default:
+		err = gorm.ErrInvalidTransaction
+	}
+	return
 }
 
 // GetDBConnWithContext gets *sql.DB connection based on the context. If no

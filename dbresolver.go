@@ -14,7 +14,6 @@ const (
 
 type DBResolver struct {
 	*gorm.DB
-	original         gorm.ConnPool
 	configs          []Config
 	resolvers        map[string]*resolver
 	global           *resolver
@@ -60,8 +59,6 @@ func (dr *DBResolver) Name() string {
 }
 
 func (dr *DBResolver) Initialize(db *gorm.DB) error {
-	dr.original = db.ConnPool
-	db.ConnPool = newConnPool(dr.original, dr)
 	dr.DB = db
 	dr.registerCallbacks(db)
 	return dr.compile()

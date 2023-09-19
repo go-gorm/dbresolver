@@ -58,3 +58,11 @@ func (u using) ModifyStatement(stmt *gorm.Statement) {
 // Build implements clause.Expression interface
 func (u using) Build(clause.Builder) {
 }
+
+// Name implements clause.Interface interface
+func (u using) Name() string {
+	return usingName
+}
+
+// MergeClause implements clause.Interface interface
+func (u using) MergeClause(*clause.Clause) {}

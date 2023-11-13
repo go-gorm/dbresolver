@@ -22,6 +22,13 @@ type resolverModeLogger struct {
 	logger.Interface
 }
 
+func (l resolverModeLogger) ParamsFilter(ctx context.Context, sql string, params ...interface{}) (string, []interface{}) {
+	if filter, ok := l.Interface.(gorm.ParamsFilter); ok {
+		sql, params = filter.ParamsFilter(ctx, sql, params)
+	}
+	return sql, params
+}
+
 func (l resolverModeLogger) LogMode(level logger.LogLevel) logger.Interface {
 	l.Interface = l.Interface.LogMode(level)
 	return l

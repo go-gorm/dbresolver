@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestPolicy_PolicyFunc(t *testing.T) {
+func TestPolicy_RoundRobinPolicy(t *testing.T) {
 	var p1, p2, p3 gorm.ConnPool
 	var pools = []gorm.ConnPool{
 		p1, p2, p3,

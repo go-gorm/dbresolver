@@ -23,7 +23,7 @@ func TestPolicy_RoundRobinPolicy(t *testing.T) {
 			p = p3
 		}
 		if p != RoundRobinPolicy().Resolve(pools) {
-			t.Errorf("RandomPolicy should return p1")
+			t.Errorf("RandomPolicy should return %v", p)
 		}
 	}
 }

@@ -13,17 +13,9 @@ func TestPolicy_RoundRobinPolicy(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		var p gorm.ConnPool
-		switch i % 3 {
-		case 0:
-			p = p1
-		case 1:
-			p = p2
-		case 2:
-			p = p3
+		if pools[i%3] != RoundRobinPolicy().Resolve(pools) {
+			t.Errorf("RoundRobinPolicy failed")
 		}
-		if p != RoundRobinPolicy().Resolve(pools) {
-			t.Errorf("RandomPolicy should return %v", p)
-		}
+
 	}
 }

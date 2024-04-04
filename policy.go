@@ -2,6 +2,7 @@ package dbresolver
 
 import (
 	"math/rand"
+	"sync"
 
 	"gorm.io/gorm"
 )
@@ -23,10 +24,16 @@ func (RandomPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
 	return connPools[rand.Intn(len(connPools))]
 }
 
-func RoundRobinPolicy() Policy {
-	var i int
-	return PolicyFunc(func(connPools []gorm.ConnPool) gorm.ConnPool {
-		i = (i + 1) % len(connPools)
-		return connPools[i]
-	})
+type RoundRobinPolicy struct {
+	lock sync.Mutex
+	i    int
+}
+
+func (p *RoundRobinPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
+	p.lock.Lock()
+	defer func() {
+		p.i = (p.i + 1) % len(connPools)
+		p.lock.Unlock()
+	}()
+	return connPools[p.i]
 }

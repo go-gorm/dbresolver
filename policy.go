@@ -25,8 +25,16 @@ func (RandomPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
 }
 
 func RoundRobinPolicy() Policy {
+	var i int
+	return PolicyFunc(func(connPools []gorm.ConnPool) gorm.ConnPool {
+		i = (i + 1) % len(connPools)
+		return connPools[i]
+	})
+}
+
+func StrictRoundRobinPolicy() Policy {
 	var i int64
 	return PolicyFunc(func(connPools []gorm.ConnPool) gorm.ConnPool {
-		return connPools[int(atomic.AddInt64(&i, 1))%len(connPools)]
+		return connPools[int(atomic.LoadInt64(&i))%len(connPools)]
 	})
 }

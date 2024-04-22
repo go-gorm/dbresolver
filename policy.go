@@ -2,6 +2,7 @@ package dbresolver
 
 import (
 	"math/rand"
+	"sync/atomic"
 
 	"gorm.io/gorm"
 )
@@ -24,9 +25,8 @@ func (RandomPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
 }
 
 func RoundRobinPolicy() Policy {
-	var i int
+	var i int64
 	return PolicyFunc(func(connPools []gorm.ConnPool) gorm.ConnPool {
-		i = (i + 1) % len(connPools)
-		return connPools[i]
+		return connPools[int(atomic.AddInt64(&i, 1))%len(connPools)]
 	})
 }

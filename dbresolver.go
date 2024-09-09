@@ -144,7 +144,7 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 				ConnPool:    db.Config.ConnPool,
 				Stmts:       map[string]*gorm.Stmt{},
 				Mux:         &sync.RWMutex{},
-				PreparedSQL: make([]string, 0, 100),
+				//PreparedSQL: make([]string, 0, 100), // gorm@v1.25.12 remove
 			}
 
 			connPools = append(connPools, connPool)

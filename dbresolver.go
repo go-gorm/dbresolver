@@ -2,8 +2,6 @@ package dbresolver
 
 import (
 	"errors"
-	"sync"
-
 	"gorm.io/gorm"
 )
 
@@ -47,6 +45,7 @@ func (dr *DBResolver) Register(config Config, datas ...interface{}) *DBResolver 
 	}
 
 	config.datas = datas
+
 	dr.configs = append(dr.configs, config)
 	if dr.DB != nil {
 		dr.compileConfig(config)
@@ -140,11 +139,7 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 				connPool = preparedStmtDB.ConnPool
 			}
 
-			dr.prepareStmtStore[connPool] = &gorm.PreparedStmtDB{
-				ConnPool:    db.Config.ConnPool,
-				Stmts:       map[string]*gorm.Stmt{},
-				Mux:         &sync.RWMutex{},
-			}
+			dr.prepareStmtStore[connPool] = gorm.NewPreparedStmtDB(db.Config.ConnPool, dr.PrepareStmtLruConfig)
 
 			connPools = append(connPools, connPool)
 		} else {

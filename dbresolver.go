@@ -2,6 +2,7 @@ package dbresolver
 
 import (
 	"errors"
+
 	"gorm.io/gorm"
 )
 
@@ -134,12 +135,12 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 	config := *dr.DB.Config
 	for _, dialector := range dialectors {
 		if db, err := gorm.Open(dialector, &config); err == nil {
-			connPool := db.Config.ConnPool
+			connPool := db.ConnPool
 			if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
 				connPool = preparedStmtDB.ConnPool
 			}
 
-			dr.prepareStmtStore[connPool] = gorm.NewPreparedStmtDB(db.Config.ConnPool, dr.PrepareStmtLruConfig)
+			dr.prepareStmtStore[connPool] = gorm.NewPreparedStmtDB(db.ConnPool, dr.PrepareStmtMaxSize, dr.PrepareStmtTTL)
 
 			connPools = append(connPools, connPool)
 		} else {

@@ -2,7 +2,6 @@ package dbresolver
 
 import (
 	"errors"
-	"sync"
 
 	"gorm.io/gorm"
 )
@@ -47,6 +46,7 @@ func (dr *DBResolver) Register(config Config, datas ...interface{}) *DBResolver 
 	}
 
 	config.datas = datas
+
 	dr.configs = append(dr.configs, config)
 	if dr.DB != nil {
 		dr.compileConfig(config)
@@ -135,16 +135,12 @@ func (dr *DBResolver) convertToConnPool(dialectors []gorm.Dialector) (connPools 
 	config := *dr.DB.Config
 	for _, dialector := range dialectors {
 		if db, err := gorm.Open(dialector, &config); err == nil {
-			connPool := db.Config.ConnPool
+			connPool := db.ConnPool
 			if preparedStmtDB, ok := connPool.(*gorm.PreparedStmtDB); ok {
 				connPool = preparedStmtDB.ConnPool
 			}
 
-			dr.prepareStmtStore[connPool] = &gorm.PreparedStmtDB{
-				ConnPool:    db.Config.ConnPool,
-				Stmts:       map[string]*gorm.Stmt{},
-				Mux:         &sync.RWMutex{},
-			}
+			dr.prepareStmtStore[connPool] = gorm.NewPreparedStmtDB(db.ConnPool, dr.PrepareStmtMaxSize, dr.PrepareStmtTTL)
 
 			connPools = append(connPools, connPool)
 		} else {

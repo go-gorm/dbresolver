@@ -2,6 +2,7 @@ package dbresolver
 
 import (
 	"errors"
+	"sync"
 
 	"gorm.io/gorm"
 )
@@ -18,6 +19,7 @@ type DBResolver struct {
 	global           *resolver
 	prepareStmtStore map[gorm.ConnPool]*gorm.PreparedStmtDB
 	compileCallbacks []func(gorm.ConnPool) error
+	once             sync.Once
 }
 
 type Config struct {
@@ -58,10 +60,13 @@ func (dr *DBResolver) Name() string {
 	return "gorm:db_resolver"
 }
 
-func (dr *DBResolver) Initialize(db *gorm.DB) error {
-	dr.DB = db
-	dr.registerCallbacks(db)
-	return dr.compile()
+func (dr *DBResolver) Initialize(db *gorm.DB) (err error) {
+	dr.once.Do(func() {
+		dr.DB = db
+		dr.registerCallbacks(db)
+		err = dr.compile()
+	})
+	return
 }
 
 func (dr *DBResolver) compile() error {

@@ -51,7 +51,8 @@ func init() {
 
 func TestDBResolver(t *testing.T) {
 	for i := 0; i < 2; i++ {
-		DB, err := gorm.Open(mysql.Open("gorm:gorm@tcp(localhost:9911)/gorm?charset=utf8&parseTime=True&loc=Local"), &gorm.Config{PrepareStmt: i%2 == 0})
+		preparedStmt := i%2 == 0
+		DB, err := gorm.Open(mysql.Open("gorm:gorm@tcp(localhost:9911)/gorm?charset=utf8&parseTime=True&loc=Local"), &gorm.Config{PrepareStmt: preparedStmt})
 		if err != nil {
 			t.Fatalf("failed to connect db, got error: %v", err)
 		}
@@ -62,7 +63,6 @@ func TestDBResolver(t *testing.T) {
 		}
 
 		if err := DB.Use(dbresolver.Register(dbresolver.Config{
-			Sources: []gorm.Dialector{mysql.Open("gorm:gorm@tcp(localhost:9911)/gorm?charset=utf8&parseTime=True&loc=Local")},
 			Replicas: []gorm.Dialector{
 				mysql.Open("gorm:gorm@tcp(localhost:9912)/gorm?charset=utf8&parseTime=True&loc=Local"),
 				mysql.Open("gorm:gorm@tcp(localhost:9913)/gorm?charset=utf8&parseTime=True&loc=Local"),
@@ -76,83 +76,96 @@ func TestDBResolver(t *testing.T) {
 			t.Fatalf("failed to use plugin, got error: %v", err)
 		}
 
+		checkIsPreparedStmt := func(db *gorm.DB) {
+			if preparedStmt {
+				if _, ok := db.Statement.ConnPool.(*gorm.PreparedStmtDB); ok {
+					return
+				}
+				if _, ok := db.Statement.ConnPool.(*gorm.PreparedStmtTX); ok {
+					return
+				}
+				t.Fatalf("expected prepared statement, but got %T", db.Statement.ConnPool)
+			}
+		}
+
 		for j := 0; j < 20; j++ {
 			var order Order
 			// test transaction
 			tx := DB.Begin()
-			tx.Find(&order)
+			checkIsPreparedStmt(tx.Find(&order))
 			if order.OrderNo != "9911" {
 				t.Fatalf("idx: %v: order should comes from default db, but got order %v", j, order.OrderNo)
 			}
 			tx.Rollback()
 
 			tx = DB.Clauses(dbresolver.Read).Begin()
-			tx.Find(&order)
+			checkIsPreparedStmt(tx.Find(&order))
 			if order.OrderNo != "9912" && order.OrderNo != "9913" {
 				t.Fatalf("idx: %v: order should comes from read db, but got order %v", j, order.OrderNo)
 			}
 			tx.Rollback()
 
 			tx = DB.Clauses(dbresolver.Write).Begin()
-			tx.Find(&order)
+			checkIsPreparedStmt(tx.Find(&order))
 			if order.OrderNo != "9911" {
 				t.Fatalf("idx: %v: order should comes from write db, but got order %v", j, order.OrderNo)
 			}
 			tx.Rollback()
 
 			tx = DB.Clauses(dbresolver.Use("users"), dbresolver.Write).Begin()
-			tx.Find(&order)
+			checkIsPreparedStmt(tx.Find(&order))
 			if order.OrderNo != "9914" {
 				t.Fatalf("idx: %v: order should comes from users, write db, but got order %v", j, order.OrderNo)
 			}
 			tx.Rollback()
 
 			tx = DB.Clauses(dbresolver.Write, dbresolver.Use("users")).Begin()
-			tx.Find(&order)
+			checkIsPreparedStmt(tx.Find(&order))
 			if order.OrderNo != "9914" {
 				t.Fatalf("idx: %v: order should comes from users, write db, but got order %v", j, order.OrderNo)
 			}
 			tx.Rollback()
 
 			// test query
-			DB.First(&order)
+			checkIsPreparedStmt(DB.First(&order))
 			if order.OrderNo != "9912" && order.OrderNo != "9913" {
 				t.Fatalf("idx: %v: order should comes from read db, but got order %v", j, order.OrderNo)
 			}
 
-			DB.Clauses(dbresolver.Write).First(&order)
+			checkIsPreparedStmt(DB.Clauses(dbresolver.Write).First(&order))
 			if order.OrderNo != "9911" {
 				t.Fatalf("idx: %v: order should comes from write db, but got order %v", j, order.OrderNo)
 			}
 
-			DB.Clauses(dbresolver.Use("users")).First(&order)
+			tx = DB.Clauses(dbresolver.Use("users"))
+			checkIsPreparedStmt(tx.First(&order))
 			if order.OrderNo != "9913" {
 				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", j, order.OrderNo)
 			}
 
-			DB.Clauses(dbresolver.Use("users"), dbresolver.Write).First(&order)
+			checkIsPreparedStmt(DB.Clauses(dbresolver.Use("users"), dbresolver.Write).First(&order))
 			if order.OrderNo != "9914" {
 				t.Fatalf("idx: %v: order should comes from write db @ users, but got order %v", j, order.OrderNo)
 			}
 
 			var user User
-			DB.First(&user)
+			checkIsPreparedStmt(DB.First(&user))
 			if user.Name != "9913" {
 				t.Fatalf("idx: %v: user should comes from read db, but got %v", j, user.Name)
 			}
 
-			DB.Clauses(dbresolver.Write).First(&user)
+			checkIsPreparedStmt(DB.Clauses(dbresolver.Write).First(&user))
 			if user.Name != "9914" {
 				t.Fatalf("idx: %v: user should comes from read db, but got %v", j, user.Name)
 			}
 
 			var product Product
-			DB.First(&product)
+			checkIsPreparedStmt(DB.First(&product))
 			if product.Name != "9913" {
 				t.Fatalf("idx: %v: product should comes from read db, but got %v", j, product.Name)
 			}
 
-			DB.Clauses(dbresolver.Write).First(&product)
+			checkIsPreparedStmt(DB.Clauses(dbresolver.Write).First(&product))
 			if product.Name != "9914" {
 				t.Fatalf("idx: %v: product should comes from write db, but got %v", j, product.Name)
 			}
@@ -179,7 +192,7 @@ func TestDBResolver(t *testing.T) {
 			}
 
 			// test create
-			DB.Create(&User{Name: "create"})
+			checkIsPreparedStmt(DB.Create(&User{Name: "create"}))
 			if err := DB.First(&User{}, "name = ?", "create").Error; err == nil {
 				t.Fatalf("can't read user from read db, got no error happened")
 			}

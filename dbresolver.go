@@ -94,6 +94,7 @@ func (dr *DBResolver) compileConfig(config Config) (err error) {
 
 	if len(config.Sources) == 0 {
 		r.sources = []gorm.ConnPool{connPool}
+		dr.prepareStmtStore[connPool] = gorm.NewPreparedStmtDB(connPool, dr.PrepareStmtMaxSize, dr.PrepareStmtTTL)
 	} else if r.sources, err = dr.convertToConnPool(config.Sources); err != nil {
 		return err
 	}

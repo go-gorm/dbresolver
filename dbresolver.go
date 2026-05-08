@@ -2,6 +2,7 @@ package dbresolver
 
 import (
 	"errors"
+	"reflect"
 	"sync/atomic"
 
 	"gorm.io/gorm"
@@ -43,7 +44,7 @@ func (dr *DBResolver) Register(config Config, datas ...interface{}) *DBResolver 
 		dr.resolvers = map[string]*resolver{}
 	}
 
-	if config.Policy == nil {
+	if config.Policy == nil || (reflect.ValueOf(config.Policy).Kind() != reflect.Invalid && reflect.ValueOf(config.Policy).IsNil()) {
 		config.Policy = RandomPolicy{}
 	}
 

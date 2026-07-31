@@ -17,11 +17,10 @@ func (f PolicyFunc) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
 	return f(connPools)
 }
 
-type RandomPolicy struct {
-}
-
-func (RandomPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
-	return connPools[rand.Intn(len(connPools))]
+func RandomPolicy() Policy {
+	return PolicyFunc(func(connPools []gorm.ConnPool) gorm.ConnPool {
+		return connPools[rand.Intn(len(connPools))]
+	})
 }
 
 func RoundRobinPolicy() Policy {
